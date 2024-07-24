@@ -29,7 +29,7 @@
   - Database setup file
     - [init.sql](configuration/database/init.sql): We use this file to initialize our database.
  
-* [Github workflows](.github/workflows): We put files that configure the Github Actions in this folder.
-  - [develop.yaml](.github/workflows/develop.yaml): The workflow performs linting and unit testing when a pull request to the `develop` branch is created.
-  - [staging.yaml](.github/workflows/staging.yaml): The workflow deploys codes onto the staging server and performs end-to-end testing. If the testing failed, it automatically create a GitHub issue to notify developers.
-  - [production.yaml](.github/workflows/production.yaml): The workflow deploys codes into the production server and creates a GitHub release when a pull request is merged into the `main` branch.
+* [Github workflows](workflow-file): We put files that configure the Github Actions in this folder.
+  - [develop.yaml](workflow-file/develop.yaml): The workflow performs linting and unit testing when a pull request to the `develop` branch is created.
+  - [staging.yaml](workflow-file/staging.yaml): The workflow deploys codes onto the staging server and performs end-to-end testing. If the testing failed, it automatically create a GitHub issue to notify developers.
+  - [production.yaml](workflow-file/production.yaml): The workflow deploys codes into the production server and creates a GitHub release when a pull request is merged into the `main` branch.
