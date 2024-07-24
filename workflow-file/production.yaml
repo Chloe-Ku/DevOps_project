@@ -1,0 +1,53 @@
+name: production
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - main
+
+jobs:
+  deploy:
+    if: github.event.pull_request.merged == true
+    runs-on: [self-hosted, production]
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build docker image
+        run: docker build --tag coffee-project ./coffee-project
+      - name: Remove old container
+        run: docker rm --force app
+      - name: Create new container
+        run: >
+          docker run
+          --detach
+          --env NODE_ENV=production
+          --env FLUENT_HOST=${{ vars.FLUENT_HOST }}
+          --env DB_URL=${{ secrets.PRODUCTION_DB }}
+          --env SENTRY_DSN=${{ secrets.PRODUCTION_SENTRY }}
+          --name app
+          --network host
+          coffee-project
+
+  tag:
+    if: github.event.pull_request.merged == true
+    runs-on: [self-hosted, production]
+    timeout-minutes: 10
+    env: 
+      Branch_Name: "${{ github.event.pull_request.head.ref }}"
+    steps:
+      - name: Extract branch name
+        run: echo $Branch_Name 
+      - name: Retrieve source branch tag, concate new release and create new release
+        run: |
+          IN=$Branch_Name
+          arrIN=(${IN//-/ })
+          Name="main"
+          Name="${Name}-${arrIN[1]}"
+          echo ${Name}
+          gh release create ${Name}
+        env:
+          GITHUB_ENTERPRISE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_HOST: github.ncsu.edu

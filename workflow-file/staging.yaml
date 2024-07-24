@@ -1,0 +1,52 @@
+name: staging
+
+on:
+  push:
+    branches:
+      - release-**
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, staging]
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Build docker image
+        run: docker build --tag coffee-project ./coffee-project
+      - name: Remove old container
+        run: docker rm --force app
+      - name: Create new container
+        run: >
+          docker run
+          --detach
+          --env NODE_ENV=staging
+          --env DB_URL=${{ secrets.STAGING_DB }}
+          --env FLUENT_HOST=${{ vars.FLUENT_HOST }}
+          --env SENTRY_DSN=${{ secrets.STAGING_SENTRY }}
+          --name app
+          --network host 
+          coffee-project
+
+  e2e-testing:
+    needs: deploy
+    runs-on: [self-hosted, staging]
+    timeout-minutes: 10
+    steps:
+      - name: set up database for testing
+        run: psql ${{ secrets.STAGING_DB }} < configuration/database/init.sql
+      - name: run end to end testing
+        run: python3 coffee-project/test/e2e_test.py
+  
+  notify:
+    name: Notified failed end-to-end testing
+    needs: e2e-testing
+    if: failure() && github.event.pull_request == null
+    runs-on: [self-hosted, staging]
+    timeout-minutes: 10
+    steps:
+      - name: Create Issue
+        run: gh issue create --title "End-to-End Testing Failed" --body "There are some errors occurred after end-to-end testing." --label bug
+        env:
+          GITHUB_ENTERPRISE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_HOST: github.ncsu.edu

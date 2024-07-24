@@ -1,0 +1,68 @@
+name: develop
+
+on:
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  lint:
+    runs-on: self-hosted
+    timeout-minutes: 10
+    steps:
+      - name: Check out Git repo
+        uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21.x'
+      - name: Install Dependencies
+        run: npm ci
+        working-directory: ./coffee-project
+      - name: Code Linting
+        run: npm run lint
+        working-directory: ./coffee-project
+
+  unit-test:
+    needs: lint
+    runs-on: [self-hosted, staging]
+    timeout-minutes: 10
+    services:
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: postgres:16.0
+        # Provide the password for postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          # Maps tcp port 5432 on service container to the host
+          - 5430:5432
+
+    steps:
+      - name: Check out Git repo
+        uses: actions/checkout@v4
+      - name: Use Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '21.x'
+      - name: Install Dependencies
+        run: npm ci
+        working-directory: ./coffee-project
+      - name: Connect to PostgreSQL
+        run: psql -h localhost -p 5430 -U postgres -d postgres < init.sql
+        env:
+          PGPASSWORD: postgres
+        working-directory: ./configuration/database
+      - name: Run Unit Testing
+        run: npm test
+        env:
+          DB_URL: postgres://postgres:postgres@localhost:5430/postgres
+          PORT: 3030
+        working-directory: ./coffee-project
