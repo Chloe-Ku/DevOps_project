@@ -1,0 +1,5 @@
+[staging]
+152.7.177.187 ansible_user=jwong23
+
+[production]
+152.7.177.40 ansible_user=jwong23

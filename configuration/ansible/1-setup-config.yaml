@@ -1,0 +1,91 @@
+---
+- name: Demo playbook
+  hosts: staging, production
+  become: yes
+  become_method: sudo
+  tasks:
+    # Install required system packages
+    - name: Install aptitude
+      apt:
+        name: aptitude
+        state: latest
+        update_cache: true
+
+    - name: Install required system packages
+      apt:
+        pkg:
+          - python3-pip
+        state: latest
+        update_cache: true
+
+    # Install Docker
+    # ref: https://www.digitalocean.com/community/tutorials/how-to-use-ansible-to-install-and-set-up-docker-on-ubuntu-20-04
+    - name: Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        state: present
+
+    - name: Add Docker Repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu focal stable
+        state: present
+
+    - name: Update apt and install docker-ce
+      apt:
+        name: docker-ce
+        state: latest
+        update_cache: true
+
+    - name: Install Docker Module for Python
+      pip:
+        name: docker
+
+    # Start Docker
+    - name: Start Docker Service
+      service:
+        name: docker
+        state: restarted
+        enabled: yes
+
+    # PosrgreSQL setup
+    - name: Pull an image
+      community.docker.docker_image:
+        name: postgres:16.0
+        source: pull
+  
+    - name: Create postgres container
+      community.docker.docker_container:
+        name: postgres
+        image: "postgres:16.0"
+        state: started
+        ports:
+          - "5432:5432"
+        env:
+          POSTGRES_PASSWORD: "{{db_password}}"
+
+    # nginx
+    - name: Install nginx
+      apt:
+        name: nginx
+        state: latest
+    
+    - name: Copy file default for nginx
+      copy: 
+        src: default
+        dest: /etc/nginx/sites-available
+        
+    - name: Start nginx service
+      service:
+        name: nginx
+        enabled: true
+        state: restarted
+
+    - name: Expose port 80 with iptables
+      shell: "sudo iptables -I INPUT -p tcp -m tcp --dport 80 -j ACCEPT"
+
+    
+
+    
+    
+    
+    

@@ -1,0 +1,38 @@
+---
+- name: Apply Security Patches
+  hosts: staging, production
+  become: yes 
+  tasks:
+    # ref: https://www.jeffgeerling.com/blog/2022/ansible-playbook-upgrade-ubuntudebian-servers-and-reboot-if-needed
+    - name: Upgrade all packages
+      ansible.builtin.apt:
+        upgrade: dist
+        update_cache: yes
+        
+    - name: Check if a reboot is required.
+      ansible.builtin.stat:
+        path: /var/run/reboot-required
+        get_md5: no
+      register: reboot_required_file
+
+    - name: Reboot the server (if required).
+      ansible.builtin.reboot:
+      when: reboot_required_file.stat.exists == true
+
+    - name: Remove dependencies that are no longer required.
+      ansible.builtin.apt:
+        autoremove: yes
+
+    # ref: https://www.cyberciti.biz/faq/ansible-reboot-debian-ubuntu-linux-for-kernel-update-waitforit/
+    - name: Wait 300 seconds, but only start checking after 60 seconds
+      ansible.builtin.wait_for_connection:
+        delay: 60
+        timeout: 300
+
+    - name: Verify new update (optional)
+      ansible.builtin.command: uname -mrs
+      register: uname_result
+
+    - name: Display new kernel version
+      ansible.builtin.debug:
+        var: uname_result.stdout_lines
